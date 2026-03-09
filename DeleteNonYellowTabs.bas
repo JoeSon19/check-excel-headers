@@ -13,7 +13,7 @@ Sub DeleteNonYellowTabs()
 
     ' Set reference to "tab list" sheet
     On Error Resume Next
-    Set wsTabList = ThisWorkbook.Sheets("tab list")
+    Set wsTabList = ThisWorkbook.Sheets("Tab List")
     On Error GoTo 0
 
     If wsTabList Is Nothing Then
@@ -37,7 +37,7 @@ Sub DeleteNonYellowTabs()
     Next i
 
     ' Always keep the "tab list" sheet itself
-    keepTabs("tab list") = True
+    keepTabs("Tab List") = True
 
     If keepTabs.Count <= 1 Then
         MsgBox "No yellow-highlighted tabs found in column A. Nothing to do.", vbExclamation

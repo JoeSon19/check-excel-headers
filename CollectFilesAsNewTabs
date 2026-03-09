@@ -1,0 +1,119 @@
+Option Explicit
+
+Sub CollectFilesAsNewTabs()
+
+    Dim folderPath As String
+    Dim fileName As String
+    Dim sourceWb As Workbook
+    Dim sourceWs As Worksheet
+    Dim masterWb As Workbook
+    Dim newWs As Worksheet
+    Dim baseName As String
+    Dim sheetName As String
+    Dim counter As Long
+    Dim savePath As String
+    Dim firstSheetDeleted As Boolean
+    
+    ' === Set your folder path here ===
+    folderPath = "C:\YourFolderPath\"
+    
+    ' Make sure folder path ends with "\"
+    If Right(folderPath, 1) <> "\" Then folderPath = folderPath & "\"
+    
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    Application.EnableEvents = False
+    
+    ' Create a new master workbook
+    Set masterWb = Workbooks.Add
+    firstSheetDeleted = False
+    
+    ' Loop through all Excel files in the folder
+    fileName = Dir(folderPath & "*.xls*")
+    
+    Do While fileName <> ""
+        
+        ' Skip the master file if it already exists in the same folder
+        If fileName <> masterWb.Name Then
+            
+            Set sourceWb = Workbooks.Open(folderPath & fileName, ReadOnly:=True)
+            
+            ' Copy the first sheet from each workbook
+            Set sourceWs = sourceWb.Worksheets(1)
+            sourceWs.Copy After:=masterWb.Sheets(masterWb.Sheets.Count)
+            Set newWs = masterWb.Sheets(masterWb.Sheets.Count)
+            
+            ' Create a valid sheet name from file name
+            baseName = Left(fileName, InStrRev(fileName, ".") - 1)
+            sheetName = CleanSheetName(baseName)
+            
+            ' Ensure unique sheet name
+            counter = 1
+            Do While SheetExists(sheetName, masterWb)
+                sheetName = Left(CleanSheetName(baseName), 28) & "_" & counter
+                counter = counter + 1
+            Loop
+            
+            newWs.Name = sheetName
+            
+            sourceWb.Close SaveChanges:=False
+        End If
+        
+        fileName = Dir
+    Loop
+    
+    ' Delete default blank sheet(s)
+    Do While masterWb.Worksheets.Count > 1
+        If IsSheetBlank(masterWb.Worksheets(1)) Then
+            masterWb.Worksheets(1).Delete
+            firstSheetDeleted = True
+        Else
+            Exit Do
+        End If
+    Loop
+    
+    ' Save master workbook
+    savePath = folderPath & "Master_Combined.xlsx"
+    masterWb.SaveAs Filename:=savePath, FileFormat:=xlOpenXMLWorkbook
+    
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+    
+    MsgBox "Done. Master file created at:" & vbCrLf & savePath, vbInformation
+
+End Sub
+
+Function CleanSheetName(sName As String) As String
+    Dim badChars As Variant
+    Dim i As Long
+    
+    badChars = Array("/", "\", "[", "]", "*", "?", ":", "'")
+    
+    For i = LBound(badChars) To UBound(badChars)
+        sName = Replace(sName, badChars(i), "_")
+    Next i
+    
+    ' Excel sheet names max length = 31
+    If Len(sName) > 31 Then sName = Left(sName, 31)
+    
+    If Trim(sName) = "" Then sName = "Sheet"
+    
+    CleanSheetName = sName
+End Function
+
+Function SheetExists(sheetName As String, wb As Workbook) As Boolean
+    Dim ws As Worksheet
+    
+    SheetExists = False
+    For Each ws In wb.Worksheets
+        If LCase(ws.Name) = LCase(sheetName) Then
+            SheetExists = True
+            Exit Function
+        End If
+    Next ws
+End Function
+
+Function IsSheetBlank(ws As Worksheet) As Boolean
+    IsSheetBlank = (Application.WorksheetFunction.CountA(ws.Cells) = 0)
+End Function
